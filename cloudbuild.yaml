@@ -1,0 +1,12 @@
+steps:
+# Install
+- name: 'gcr.io/cloud-builders/yarn'
+  args: ['install']
+
+# Build
+- name: 'gcr.io/cloud-builders/yarn'
+  args: ['build']
+
+# Deploy
+- name: 'gcr.io/cloud-builders/gcloud'
+  args: ['app', 'deploy']
