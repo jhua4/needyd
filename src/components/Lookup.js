@@ -27,14 +27,16 @@ class Lookup extends React.Component {
     axios.get(`${process.env.REACT_APP_API_URL}/jobs?fromDate=${fromDate}&toDate=${toDate}`)
       .then(res => {
         const data = {};
-        res.data.forEach(j => {
-          j.keywords.forEach(k => {
-            if (!data[k]) {
-              data[k] = 1;
-            } else {
-              data[k]++;
-            }
-          })
+        res.data.data.forEach(j => {
+          if (j.keywords) {
+            j.keywords.forEach(k => {
+              if (!data[k]) {
+                data[k] = 1;
+              } else {
+                data[k]++;
+              }
+            })
+          }
         });
 
         this.setState({
