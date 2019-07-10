@@ -20,7 +20,9 @@ const FilterForm = ({ setState, state }) => (
       initialValues={{ fromDate: moment().subtract(30, 'days').format('YYYY-MM-DD'), toDate: moment().format('YYYY-MM-DD') }}
       validate={values => { }}
       onSubmit={(values, { setSubmitting }) => {
-        axios.get(`${process.env.REACT_APP_API_URL}/jobs?fromDate=${values.fromDate}&toDate=${values.toDate}`)
+        const fromDate = moment(values.fromDate).utc().format();
+        const toDate = moment(values.toDate).utc().format();
+        axios.get(`${process.env.REACT_APP_API_URL}/jobs?fromDate=${fromDate}&toDate=${toDate}`)
           .then(res => {
             const data = {};
             res.data.data.forEach(j => {
@@ -35,23 +37,26 @@ const FilterForm = ({ setState, state }) => (
               }
             });
 
-            setSubmitting(false);
-            this.setState({
-              labels: Object.keys(data),
-              datasets: [
-                {
-                  label: 'Job Posts',
-                  data: Object.values(data),
-                  backgroundColor: randomColor({
-                    count: Object.keys(data).length,
-                    hue: 'random'
-                  })
-                }
-              ]
+            setState({
+              ...state,
+              data: {
+                labels: Object.keys(data),
+                datasets: [
+                  {
+                    label: 'Job Posts',
+                    data: Object.values(data),
+                    backgroundColor: randomColor({
+                      count: Object.keys(data).length,
+                      hue: 'random'
+                    })
+                  }
+                ]
+              }
             });
+            setSubmitting(false);
           })
           .catch((error) => {
-            setState({ ...state, snackbarOpen: true, message: error.response || 'An error has occurred.' });
+            setState({ ...state, snackbarOpen: true, message: error.response && error.response.data ? error.response.data : 'An error has occurred.' });
             setSubmitting(false);
           });
       }}
