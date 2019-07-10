@@ -2,120 +2,145 @@ import React from 'react';
 import './Lookup.css';
 import Button from '@material-ui/core/Button';
 import Checkbox from '@material-ui/core/Checkbox';
-import FormControlLabel from '@material-ui/core/FormControlLabel';
 import SearchIcon from '@material-ui/icons/Search';
-import TextField from '@material-ui/core/TextField';
+import { MuiPickersUtilsProvider, DatePicker } from '@material-ui/pickers';
+import MomentUtils from '@date-io/moment';
 import moment from 'moment';
 import { Bar } from 'react-chartjs-2';
 import axios from 'axios';
 import randomColor from 'randomcolor';
+import { Formik, Form, Field } from 'formik';
+import Snackbar from '@material-ui/core/Snackbar';
+import Slide from '@material-ui/core/Slide';
+
+const FilterForm = ({ setState, state }) => (
+  <div>
+    <h2>Find Data</h2>
+    <Formik
+      initialValues={{ fromDate: moment().subtract(30, 'days').format('YYYY-MM-DD'), toDate: moment().format('YYYY-MM-DD') }}
+      validate={values => { }}
+      onSubmit={(values, { setSubmitting }) => {
+        axios.get(`${process.env.REACT_APP_API_URL}/jobs?fromDate=${values.fromDate}&toDate=${values.toDate}`)
+          .then(res => {
+            const data = {};
+            res.data.data.forEach(j => {
+              if (j.keywords) {
+                j.keywords.forEach(k => {
+                  if (!data[k]) {
+                    data[k] = 1;
+                  } else {
+                    data[k]++;
+                  }
+                })
+              }
+            });
+
+            setSubmitting(false);
+            this.setState({
+              labels: Object.keys(data),
+              datasets: [
+                {
+                  label: 'Job Posts',
+                  data: Object.values(data),
+                  backgroundColor: randomColor({
+                    count: Object.keys(data).length,
+                    hue: 'random'
+                  })
+                }
+              ]
+            });
+          })
+          .catch((error) => {
+            setState({ ...state, snackbarOpen: true, message: error.response || 'An error has occurred.' });
+            setSubmitting(false);
+          });
+      }}
+    >
+      {({ isSubmitting, setFieldValue, values }) => (
+        <Form>
+          <div className='row'>
+            <div className='form-field'>
+              <DatePicker
+                name={'fromDate'}
+                format='MM/DD/YYYY'
+                value={values['fromDate']}
+                onChange={e => setFieldValue('fromDate', e)}
+                label={'From Date'}
+              />
+            </div>
+            <div className='form-field'>
+              <DatePicker
+                name={'toDate'}
+                format='MM/DD/YYYY'
+                value={values['toDate']}
+                onChange={e => setFieldValue('toDate', e)}
+                label={'To Date'}
+              />
+            </div>
+          </div>
+          <div className='section-header'>
+            <label>Sources</label>
+          </div>
+          <div className='row'>
+            <div className='form-field'>
+              <Field name='source-indeed' checked={true} disabled={true} component={Checkbox} />
+              <label>Indeed.com</label>
+            </div>
+          </div>
+          <div className='row'>
+            <div className='form-field'>
+              <Button type='submit' variant='contained' color='primary' disabled={isSubmitting}>
+                Search<SearchIcon />
+              </Button>
+            </div>
+          </div>
+        </Form>
+      )}
+    </Formik>
+  </div>
+);
+
+function TransitionDown(props) {
+  return <Slide {...props} direction='down' />;
+}
 
 class Lookup extends React.Component {
   constructor(props) {
     super(props);
 
-    this.state = { data: {} };
-    this.onSubmit = this.onSubmit.bind(this);
+    this.state = { snackbarOpen: false, data: {} };
+    this.setState = this.setState.bind(this);
+    this.handleClose = this.handleClose.bind(this);
   }
 
-  onSubmit(e) {
-    e.preventDefault();
-    const data = new FormData(e.target);
-    const fromDate = moment(data.get('from-date')).utc().format();
-    const toDate = moment(data.get('to-date')).utc().format();
-
-    axios.get(`${process.env.REACT_APP_API_URL}/jobs?fromDate=${fromDate}&toDate=${toDate}`)
-      .then(res => {
-        const data = {};
-        res.data.data.forEach(j => {
-          if (j.keywords) {
-            j.keywords.forEach(k => {
-              if (!data[k]) {
-                data[k] = 1;
-              } else {
-                data[k]++;
-              }
-            })
-          }
-        });
-
-        this.setState({
-          data: {
-            labels: Object.keys(data),
-            datasets: [
-              {
-                label: 'Job Posts',
-                data: Object.values(data),
-                backgroundColor: randomColor({
-                  count: Object.keys(data).length,
-                  hue: 'random'
-                })
-              }
-            ]
-          }
-        });
-      });
+  handleClose() {
+    this.setState({ ...this.state, snackbarOpen: false });
   }
 
   render() {
-    const fromDate = moment().subtract(30, "days").format("YYYY-MM-DD");
-    const toDate = moment().format("YYYY-MM-DD");
     return (
       <div>
-        <div className="container">
-          <div className="lookup">
-            <form onSubmit={this.onSubmit}>
-              <h2>Find Data</h2>
-              <div className="row">
-                <div className="form-field">
-                  <TextField
-                    id="from-date"
-                    name="from-date"
-                    label="From"
-                    type="date"
-                    defaultValue={fromDate}
-                    InputLabelProps={{
-                      shrink: true,
-                    }}
-                    className="date-picker" />
-                </div>
-                <div className="form-field">
-                  <TextField
-                    id="to-date"
-                    name="to-date"
-                    label="To"
-                    type="date"
-                    defaultValue={toDate}
-                    InputLabelProps={{
-                      shrink: true,
-                    }}
-                    className="date-picker" />
-                </div>
-              </div>
-              <div className="section-header">
-                <label>Sources</label>
-              </div>
-              <div className="row">
-                <div className="form-field">
-                  <FormControlLabel
-                    control={<Checkbox name="source-indeed" disabled={true} checked={true} />}
-                    label="Indeed.com"
-                  />
-                </div>
-              </div>
-              <div className="row">
-                <div className="form-field">
-                  <Button type="submit" variant="contained" color="primary">
-                    Search<SearchIcon />
-                  </Button>
-                </div>
-              </div>
-            </form>
+        <MuiPickersUtilsProvider utils={MomentUtils}>
+          <div className='container'>
+            <div className='lookup'>
+              <FilterForm setState={this.setState} state={this.state} />
+            </div>
           </div>
-        </div>
-        <div className="container">
-          <Bar data={this.state.data} height={500} options={{ title: { display: true, text: 'Technologies in Job Postings', fontSize: 16 }, maintainAspectRatio: false }} />
-        </div>
+          <div className='container'>
+            <Bar data={this.state.data} height={500} options={{ title: { display: true, text: 'Technologies in Job Postings', fontSize: 16 }, maintainAspectRatio: false }} />
+          </div>
+        </MuiPickersUtilsProvider>
+        <Snackbar
+          variant='error'
+          anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+          open={this.state.snackbarOpen}
+          onClose={this.handleClose}
+          ContentProps={{
+            'aria-describedby': 'message-id',
+          }}
+          message={<span id='message-id'>{this.state.message}</span>}
+          TransitionComponent={TransitionDown}
+        />
       </div>
     )
   }
